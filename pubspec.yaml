@@ -38,6 +38,9 @@ dependencies:
   # Permissions runtime Android (BLE nécessite BLUETOOTH_SCAN/CONNECT sur Android 12+)
   permission_handler: ^11.0.0
 
+  # Sélecteur de fichier natif Android (SAF) — permet de choisir btsnoop_hci.log manuellement
+  file_picker: ^8.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

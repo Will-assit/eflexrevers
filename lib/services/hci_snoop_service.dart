@@ -30,6 +30,9 @@ class HciSnoopService extends ChangeNotifier {
   /// Position dans le fichier jusqu'où on a déjà lu (en bytes)
   int _filePosition = 0;
 
+  /// Chemins testés lors de la dernière découverte (pour affichage diagnostic)
+  List<String> _lastTriedPaths = [];
+
   /// Table de correspondance handle ATT → UUID string
   final Map<int, String> _handleUuidMap = {};
 
@@ -66,6 +69,7 @@ class HciSnoopService extends ChangeNotifier {
   List<BlePacket> get packets => List.unmodifiable(_packets);
   Map<String, UuidInfo> get uuidMap => Map.unmodifiable(_uuidMap);
   Map<int, String> get handleUuidMap => Map.unmodifiable(_handleUuidMap);
+  List<String> get lastTriedPaths => List.unmodifiable(_lastTriedPaths);
 
   // ── API publique ────────────────────────────────────────────────────────────
 
@@ -173,6 +177,8 @@ class HciSnoopService extends ChangeNotifier {
         ]);
       }
     } catch (_) {}
+
+    _lastTriedPaths = toTry;
 
     for (final path in toTry) {
       if (await File(path).exists()) return path;

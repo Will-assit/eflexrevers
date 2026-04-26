@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -59,6 +60,37 @@ class _MainScreenState extends State<MainScreen> {
 
   int _activePacketCount(BleService ble, HciSnoopService snoop) =>
       ble.isConnected ? ble.packetCount : snoop.packetCount;
+
+  // ─── Sélecteur de fichier btsnoop ─────────────────────────────────────────
+
+  Future<void> _pickSnoopFile() async {
+    final settings = context.read<SettingsService>();
+    final snoop    = context.read<HciSnoopService>();
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['log'],
+      allowMultiple: false,
+    );
+
+    if (result == null || !mounted) return;
+    final path = result.files.single.path;
+    if (path == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Impossible d\'obtenir le chemin — accordez d\'abord '
+            '"Accès à tous les fichiers" dans les Paramètres.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    await settings.setSnoopFilePath(path);
+    snoop.stop();
+    await snoop.start();
+  }
 
   // ─── Analyse Claude ────────────────────────────────────────────────────────
 
@@ -453,22 +485,43 @@ class _MainScreenState extends State<MainScreen> {
           const SizedBox(height: 4),
           const Text(
             'Activez "Journal HCI Bluetooth" dans Paramètres → Options '
-            'développeur, puis relancez l\'eFlexFuel app. '
-            'Ou connectez-vous directement via le bouton Bluetooth.',
+            'développeur, désactivez/réactivez le Bluetooth, puis reconnectez '
+            'l\'eFlexFuel app au boîtier pour créer le fichier.',
             style: TextStyle(color: Color(0xFFBBBBBB), fontSize: 11),
           ),
-          const SizedBox(height: 6),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _orange,
-              side: const BorderSide(color: _orange),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: snoopService.start,
-            child: const Text('Réessayer', style: TextStyle(fontSize: 11)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _orange,
+                  side: const BorderSide(color: _orange),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.refresh, size: 13),
+                label:
+                    const Text('Réessayer', style: TextStyle(fontSize: 11)),
+                onPressed: snoopService.start,
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white30),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.folder_open, size: 13),
+                label: const Text('Sélectionner le fichier',
+                    style: TextStyle(fontSize: 11)),
+                onPressed: _pickSnoopFile,
+              ),
+            ],
           ),
         ],
       ),

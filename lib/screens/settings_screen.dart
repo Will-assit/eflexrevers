@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/accessibility_service.dart' as acc_svc;
@@ -43,6 +44,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _systemPromptCtrl.dispose();
     _snoopFilePathCtrl.dispose();
     super.dispose();
+  }
+
+  // ─── Sélecteur de fichier btsnoop ─────────────────────────────────────────
+
+  Future<void> _pickSnoopFile() async {
+    final settings = context.read<SettingsService>();
+    final snoop = context.read<HciSnoopService>();
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['log'],
+      allowMultiple: false,
+    );
+
+    if (result == null) return;
+    final path = result.files.single.path;
+    if (path == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Impossible d\'obtenir le chemin — accordez d\'abord '
+              '"Accès à tous les fichiers" dans les Paramètres.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    _snoopFilePathCtrl.text = path;
+    await settings.setSnoopFilePath(path);
+    snoop.stop();
+    await snoop.start();
   }
 
   // ─── Test de connexion API ─────────────────────────────────────────────────
@@ -402,25 +438,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
 
-              // Chemin du fichier manuel
+              // Chemin du fichier manuel + sélecteur
               const SizedBox(height: 8),
-              TextField(
-                controller: _snoopFilePathCtrl,
-                style: const TextStyle(
-                    color: Colors.white, fontFamily: 'monospace', fontSize: 12),
-                decoration: InputDecoration(
-                  labelText: 'Chemin fichier (vide = autodécouverte)',
-                  labelStyle: const TextStyle(color: Color(0xFFAAAAAA)),
-                  hintText: '/sdcard/BtHciSnoop/btsnoop_hci.log',
-                  hintStyle: const TextStyle(color: Color(0xFF555555)),
-                  filled: true,
-                  fillColor: const Color(0xFF333333),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none),
-                ),
-                onChanged: (v) => settings.setSnoopFilePath(v.trim()),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _snoopFilePathCtrl,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'monospace',
+                          fontSize: 12),
+                      decoration: InputDecoration(
+                        labelText: 'Chemin fichier (vide = autodécouverte)',
+                        labelStyle:
+                            const TextStyle(color: Color(0xFFAAAAAA)),
+                        hintText: '/sdcard/BtHciSnoop/btsnoop_hci.log',
+                        hintStyle:
+                            const TextStyle(color: Color(0xFF555555)),
+                        filled: true,
+                        fillColor: const Color(0xFF333333),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none),
+                      ),
+                      onChanged: (v) => settings.setSnoopFilePath(v.trim()),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF444444),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.folder_open, size: 16),
+                    label: const Text('Parcourir',
+                        style: TextStyle(fontSize: 12)),
+                    onPressed: _pickSnoopFile,
+                  ),
+                ],
               ),
+
+              // Diagnostic : chemins essayés si erreur
+              if (snoop.status == SnoopStatus.erreur &&
+                  snoop.lastTriedPaths.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                const Text('Chemins testés :',
+                    style: TextStyle(
+                        color: Color(0xFFAAAAAA),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                ...snoop.lastTriedPaths.map((p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text(
+                        p,
+                        style: const TextStyle(
+                            fontFamily: 'monospace',
+                            color: Color(0xFF666666),
+                            fontSize: 10),
+                      ),
+                    )),
+              ],
 
               // Intervalle de polling
               const SizedBox(height: 4),
