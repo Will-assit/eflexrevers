@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">eFlexReverse</string>
+    <string name="accessibility_service_label">eFlexReverse - Capture eFlexFuel</string>
+    <string name="accessibility_service_description">
+        eFlexReverse utilise ce service pour capturer les données affichées
+        dans l\'application eFlexFuel afin de les corréler avec les paquets BLE.
+    </string>
+</resources>
